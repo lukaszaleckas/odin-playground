@@ -5,6 +5,7 @@ package main
 
 import "core:io"
 import "core:log"
+import "core:mem"
 import "core:os"
 import sdl "vendor:sdl3"
 
@@ -39,8 +40,11 @@ BMP_Info_Header :: struct #packed {
 
 bmp_read_path :: proc(bmp_file: ^BMP_File, path: string) -> os.Error {
 	file := os.open(path) or_return
+	defer os.close(file)
+	reader := os.to_reader(file)
+	bmp_file := bmp_read(bmp_file, reader)
 
-	return bmp_read(bmp_file, os.to_reader(file))
+	return bmp_file
 }
 
 bmp_read :: proc(file: ^BMP_File, r: io.Reader, allocator := context.allocator) -> io.Error {
@@ -52,8 +56,9 @@ bmp_read :: proc(file: ^BMP_File, r: io.Reader, allocator := context.allocator) 
 	_ = io.read_full(r, info_header[:]) or_return
 	file.info_header = transmute(BMP_Info_Header)info_header
 
-	file.data = make([]byte, file.info_header.image_size)
-	_ = io.read_at(r, file.data, i64(file.header.data_offset)) or_return
+	_ = io.seek(r, i64(file.header.data_offset), .Start) or_return
+	file.data = make([]byte, file.info_header.image_size, allocator)
+	_ = io.read_full(r, file.data) or_return
 
 	return nil
 }
@@ -96,8 +101,21 @@ bmp_top_down_data :: proc(file: BMP_File, allocator := context.allocator) -> []b
 
 main :: proc() {
 	context.logger = log.create_console_logger()
+	when ODIN_DEBUG {
+		alloc: mem.Tracking_Allocator
+		mem.tracking_allocator_init(&alloc, context.allocator)
+		context.allocator = mem.tracking_allocator(&alloc)
+		defer {
+			for _, entry in alloc.allocation_map {
+				log.errorf("%v leaked %m", entry.location, entry.size)
+			}
+			mem.tracking_allocator_destroy(&alloc)
+		}
+	}
 
+	// Parse BMP file
 	file: BMP_File
+	defer delete(file.data)
 	read_err := bmp_read_path(&file, FILE)
 	if read_err != nil {
 		log.fatalf("can not read file: %v", read_err)
@@ -105,6 +123,7 @@ main :: proc() {
 	log.infof("header: %v", file.header)
 	log.infof("info header: %v", file.info_header)
 
+	// Initialize SDL and create window
 	if ok := sdl.Init(sdl.INIT_VIDEO); !ok {
 		log.fatalf("sdl: init failed: %v", sdl.GetError())
 	}
@@ -123,6 +142,7 @@ main :: proc() {
 	}
 	defer sdl.DestroyWindow(window)
 
+	// Create renderer and texture
 	renderer := sdl.CreateRenderer(window, "")
 	if renderer == nil {
 		log.fatalf("sdl: failed to create renderer: %v", sdl.GetError())
@@ -141,6 +161,7 @@ main :: proc() {
 	}
 	defer sdl.DestroyTexture(texture)
 
+	// Update texture with BMP data and wait for quit event
 	sdl.UpdateTexture(texture, nil, raw_data(bmp_top_down_data(file)), bmp_pitch(file))
 	sdl.RenderTexture(renderer, texture, nil, nil)
 	sdl.RenderPresent(renderer)
