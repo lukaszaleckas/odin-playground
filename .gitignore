@@ -1,0 +1,11 @@
+debug_build
+release_build
+build
+out
+
+*.dSYM/
+
+*.o
+*.a
+
+.DS_Store
