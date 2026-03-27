@@ -127,6 +127,7 @@ main :: proc() {
 	if ok := sdl.Init(sdl.INIT_VIDEO); !ok {
 		log.fatalf("sdl: init failed: %v", sdl.GetError())
 	}
+	defer sdl.Quit()
 	window_height := file.info_header.height
 	if window_height < 0 {
 		window_height *= -1

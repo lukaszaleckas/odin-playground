@@ -4,4 +4,9 @@
     "command": "odin run . -vet -debug -sanitize:address",
     "cwd": "$ZED_WORKTREE_ROOT/bmp-viewer",
   },
+  {
+    "label": "run sine-wave-player",
+    "command": "odin run . -vet -debug -sanitize:address",
+    "cwd": "$ZED_WORKTREE_ROOT/sine-wave-player",
+  },
 ]

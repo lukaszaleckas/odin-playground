@@ -5,6 +5,7 @@ Repository where I experiment with the [Odin programming language](https://odin-
 ## Projects
 
 - **bmp-viewer** — A simple BMP file viewer built with SDL3. Parses and renders 24-bit and 32-bit BMP files, with automatic vertical flip handling for bottom-up encoded images.
+- **sine-wave-player** — A simple sine wave audio player. Generates and streams a sine wave at a configurable frequency and gain using SDL's audio stream API.
 
 ## Purpose
 
