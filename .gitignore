@@ -9,3 +9,6 @@ out
 *.a
 
 .DS_Store
+
+.idea
+bin

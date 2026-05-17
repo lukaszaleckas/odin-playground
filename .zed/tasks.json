@@ -4,9 +4,28 @@
     "command": "odin run . -vet -debug -sanitize:address",
     "cwd": "$ZED_WORKTREE_ROOT/bmp-viewer",
   },
+
   {
     "label": "run sine-wave-player",
     "command": "odin run . -vet -debug -sanitize:address",
     "cwd": "$ZED_WORKTREE_ROOT/sine-wave-player",
+  },
+
+  {
+    "label": "run simd",
+    "command": "odin run . -vet -debug -sanitize:address",
+    "cwd": "$ZED_WORKTREE_ROOT/simd",
+  },
+
+  {
+    "label": "run sdl-draw",
+    "command": "odin run . -vet -debug -sanitize:address",
+    "cwd": "$ZED_WORKTREE_ROOT/sdl-draw",
+  },
+
+  {
+    "label": "run mqtt",
+    "command": "odin run . -vet -debug -sanitize:address",
+    "cwd": "$ZED_WORKTREE_ROOT/mqtt",
   },
 ]
