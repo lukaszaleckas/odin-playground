@@ -8,11 +8,11 @@ import "core:fmt"
 ARIAL :: #load("arial.ttf")
 
 main :: proc() {
-	font: Ttf_Font
+	font: Font
 
 	fmt.println(
 		ODIN_ENDIAN,
 		font,
-		ttf_parse_bytes(&font, ARIAL),
+		parse_bytes(&font, ARIAL),
 	)
 }

@@ -3,11 +3,12 @@ package main
 import "core:bytes"
 import "core:io"
 
-Ttf_Font :: struct {
-	header: Ttf_Header,
+Font :: struct {
+	header: Header,
+	table_records: []Table_Record,
 }
 
-Ttf_Header :: struct #packed {
+Header :: struct #packed {
 	sfnt_version: u32be,
 	num_tables: u16be,
 	search_range: u16be,
@@ -15,26 +16,47 @@ Ttf_Header :: struct #packed {
 	range_shift: u16be,
 }
 
-ttf_parse_bytes :: proc(font: ^Ttf_Font, data: []byte) -> io.Error {
+Table_Record :: struct #packed {
+	table_tag: [4]byte,
+	checksum: u32be,
+	offset: u32be,
+	length: u32be,
+}
+
+parse_bytes :: proc(font: ^Font, data: []byte) -> io.Error {
 	bytes_reader: bytes.Reader
 	stream := bytes.reader_init(&bytes_reader, data)
 	reader, _ := io.to_reader(stream)
 
-	return ttf_parse(font, reader)
+	return parse(font, reader)
 }
 
-ttf_parse :: proc(font: ^Ttf_Font, reader: io.Reader) -> io.Error {
-	header: [size_of(Ttf_Header)]byte
+parse :: proc(
+	font: ^Font,
+	reader: io.Reader,
+	allocator := context.allocator,
+) -> io.Error {
+	header: [size_of(Header)]byte
 	_ = io.read_full(reader, header[:]) or_return
 
-	// remove the "be" from the types
+	// use this or transmute below
+	// remove the "be" from the types if using this
+	//
 	// font.header.sfnt_version = _read_u32be(header[:4])
 	// fonbet.header.num_tables = _read_u16be(header[4:6])
 	// font.header.search_range = _read_u16be(header[6:8])
 	// font.header.entry_selector = _read_u16be(header[8:10])
 	// font.header.range_shift = _read_u16be(header[10:12])
 
-	font.header = transmute(Ttf_Header)header
+	font.header = transmute(Header)header
+	font.table_records = make([]Table_Record, font.header.num_tables, allocator)
+
+	for i in 0 ..< font.header.num_tables {
+		table_record: [size_of(Table_Record)]byte
+		_ = io.read_full(reader, table_record[:]) or_return
+
+		font.table_records[i] = transmute(Table_Record)table_record
+	}
 
 	return nil
 }
