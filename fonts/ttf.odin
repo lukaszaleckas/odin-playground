@@ -1,9 +1,5 @@
 package main
 
-import "base:builtin"
-import "base:intrinsics"
-import "core:fmt"
-import "core:log"
 import "core:bytes"
 import "core:io"
 
@@ -25,6 +21,7 @@ Font :: struct {
 
 	table_head: Table_Head,
 	table_maxp: Table_Maxp,
+	table_cmap: Table_Cmap,
 }
 
 Header :: struct #packed {
@@ -68,6 +65,22 @@ Table_Maxp :: struct #packed {
 	num_glyphs: u16be,
 }
 
+Table_Cmap :: struct {
+	header: Cmap_Header,
+	encoding_records: []Cmap_Encoding_Record,
+}
+
+Cmap_Header :: struct #packed {
+	version: u16be,
+	num_tables: u16be,
+}
+
+Cmap_Encoding_Record :: struct #packed {
+	platform_id: u16be,
+	encoding_id: u16be,
+	subtable_offset: f32be,
+}
+
 //REGION: font file parsing
 
 parse_bytes :: proc(font: ^Font, data: []byte) -> Error {
@@ -105,13 +118,27 @@ parse :: proc(
 		font.table_records[i] = transmute(Table_Record)table_record
 	}
 
-	font.table_head = _read_table(font.table_records, reader, "head", Table_Head) or_return
-	font.table_maxp = _read_table(font.table_records, reader, "maxp", Table_Maxp) or_return
+	//REGION: tables
+	font.table_head = _read_table_part(font.table_records, reader, "head", Table_Head) or_return
+	font.table_maxp = _read_table_part(font.table_records, reader, "maxp", Table_Maxp) or_return
+	{
+		font.table_cmap.header = _read_table_part(font.table_records, reader, "cmap", Cmap_Header) or_return
+
+		encoding_records := make(
+			[]Cmap_Encoding_Record,
+			font.table_cmap.header.num_tables,
+			allocator,
+		)
+		for _, i in encoding_records {
+			encoding_records[i] = _read_and_transmute(reader, Cmap_Encoding_Record) or_return
+		}
+		font.table_cmap.encoding_records = encoding_records
+	}
 
 	return nil
 }
 
-_read_table :: proc(
+_read_table_part :: proc(
 	records: []Table_Record,
 	reader: io.Reader,
 	name: string,
@@ -121,8 +148,9 @@ _read_table :: proc(
 	table_record_found: bool
 	for &record in records {
 		if string(record.table_tag[:]) == name {
-			table_record = table_record
+			table_record = record
 			table_record_found = true
+			break
 		}
 	}
 	if !table_record_found {
@@ -131,10 +159,17 @@ _read_table :: proc(
 
 	_ = io.seek(reader, i64(table_record.offset), .Start) or_return
 
-	table: [size_of(T)]byte
-	_ = io.read_full(reader, table[:]) or_return
+	return _read_and_transmute(reader, T)
+}
 
-	return transmute(T)table, nil
+_read_and_transmute :: proc(
+	reader: io.Reader,
+	$T: typeid,
+) -> (result: T, err: io.Error) {
+	value: [size_of(T)]byte
+	_ = io.read_full(reader, value[:]) or_return
+
+	return transmute(T)value, nil
 }
 
 //REGION: utilities

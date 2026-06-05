@@ -13,6 +13,5 @@ main :: proc() {
 		fmt.panicf("parse error: %v", err)
 	}
 
-	fmt.println(font.table_head)
-	fmt.println(font.table_maxp)
+	fmt.println(font)
 }
